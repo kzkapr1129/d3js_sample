@@ -9,8 +9,8 @@ const redraw = (d3Container) => {
   let padding = 5;
   let contentRect = {x1: padding, y1: padding, x2: parentNode.clientWidth - padding, y2: parentNode.clientHeight - padding};
 
-  var xScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.x1, contentRect.x2]);
-  var yScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.y2, contentRect.y1]);
+  let xScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.x1, contentRect.x2]);
+  let yScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.y2, contentRect.y1]);
 
   let points = [...Array(100).keys()].map((v) => ({x: Math.random() * 2.0 - 1.0, y: Math.random() * 2.0 - 1.0}))
 
@@ -39,7 +39,7 @@ export const Sample7 = () => {
     redraw(d3Container);
 
     d3.select(window).on("resize", () => {
-      redraw(d3Container); 
+      redraw(d3Container);
     })
   }, []);
 
