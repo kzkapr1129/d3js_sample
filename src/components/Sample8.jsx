@@ -2,85 +2,90 @@ import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 
 const redraw = (d3Container) => {
-  const svg = d3.select(d3Container.current);
-  let node = svg.node();
-  let parentNode = node.parentNode;
+  //const svg = d3.select(d3Container.current);
+  //let node = svg.node();
+  //let parentNode = node.parentNode;
 
-  let padding = 5;
-  let contentRect = {x1: padding, y1: padding, x2: parentNode.clientWidth - padding, y2: parentNode.clientHeight - padding};
+  //let padding = 5;
+  //let contentRect = {x1: padding, y1: padding, x2: parentNode.clientWidth - padding, y2: parentNode.clientHeight - padding};
 
-  let xrange = [0.3234, 0.1234];
+  //let xrange = [0.3234, 0.1234];
 
-  // 10   => 1
-  // 1    => 0.1
-  // 20   => 1
-  // 33   => 1
-  // 0.2  => 0.01
-  // 0.02 => 0.001
-
-  const getScale2 = (array) => {
+  const makeScaleMaterial = (array) => {
     const min = array.reduce((a, b) => Math.min(a, b));
     const max = array.reduce((a, b) => Math.max(a, b));
-    const  minorScaleSpan = ((v) => {
-      const vcompoents = v.toString().split(".");
-      switch (vcompoents.length) {
-      // 整数と小数点で分割できない時
-      case 0: return 0;
 
-      // 整数部だけ分割できた時
-      case 1: {
-        if (0 > v) {
-          // 整数のみと判断したにも関わらず1未満の場合(".1"とか)
-          throw {errMsg: `invalid number: ${v}`};
+    const calcMaxIntDigitMask = (v) => {
+      if (!v || v === "0") return 0;
+      let reg = v.match(/^0+/);
+      let correction = reg ? v.length - reg[0].length - 1: v.length - 1;
+      return Math.pow(10, correction);
+    }
+
+    const calcMaxDecimalDigitMask = (v) => {
+      if (!v || v === "0") return 0;
+      // 小数点の最大桁数をマスクする値を返却する
+      let reg = v.match(/^0+/);
+      let correction = reg ? reg[0].length + 1 : 1;
+      return 1.0 / Math.pow(10, correction);
+    }
+
+    const makeScaleMaterialImpl = (v) => {
+      const absValue = Math.abs(v);
+      // 目盛りを作成するための材料となる値を計算する
+      const valueComponents = v.toString().split(".");
+      switch (valueComponents.length) {
+        // 空文字の場合
+        case 0: return {maxDigitMask: 0};
+        // 整数値、または整数値を省略した小数 例) .123
+        case 1: {
+          if (absValue < 1) {
+            // 指定数値が0~1の場合
+            let maxDigitMask = calcMaxDecimalDigitMask(valueComponents[0]);
+            return {maxDigitMask};
+          }
+          let maxDigitMask = calcMaxIntDigitMask(valueComponents[0]);
+          return {maxDigitMask};
         }
-        return Math.pow(10, vcompoents[0].length-1) / 10;
-      }
-
-      // 整数部と少数部を分割できたとき
-      case 2: {
-        if (vcompoents[0] === '0') {
-          // 整数が0、小数点以下が0ではない場合
-          let reg = vcompoents[1].match(/^0+/);
-          let correction = reg ? reg[0].length + 2 : 2;
-          return 1.0 / Math.pow(10, correction);
+        // 整数値+少数の場合
+        case 2: {
+          if (v < 1) {
+            // 指定数値が0~1の場合
+            let maxDigitMask = calcMaxDecimalDigitMask(valueComponents[1]);
+            return {maxDigitMask};
+          }
+          // 1以上の場合は整数のみを対象とする
+          let maxDigitMask = calcMaxIntDigitMask(valueComponents[0]);
+          return {maxDigitMask};
         }
-        return Math.pow(10, vcompoents[0].length-1) / 10;
-      }
-
-      // それ以外の場合
-      default:
-        throw {errMsg: `invalid number: ${v}`};
-      }
-    })(max-min);
-
-    let countDecimalDigit = (v) => {
-      const vcompoents = v.toString().split(".");
-      switch (vcompoents.length) {
-        case 0: return 0;
-        case 1: return v < 0 ? vcompoents[0].length : 0;
-        case 2: return vcompoents[1].length;
         default:
-          throw {errMsg: `invalid number: ${v}`};
+          return {maxDigitMask: 0};
       }
     };
-
-    let makeScales = (min, max, scaleSpan) => {
-      let scaleStart = parseInt(min / scaleSpan, 10) * scaleSpan;
-      let scaleEnd   = parseInt(max / scaleSpan, 10) * scaleSpan;
-      let numScale = parseInt((scaleEnd - scaleStart) / scaleSpan);
-      return [...Array(numScale+2).keys()].map(v => (scaleStart + scaleSpan * v).toFixed(countDecimalDigit(scaleSpan)));
-    };
-    const majorScaleSpan = minorScaleSpan * 10;
-    return [makeScales(min, max, majorScaleSpan), makeScales(min, max, minorScaleSpan)];
+    return {...{min, max}, ...makeScaleMaterialImpl(max-min)};
   };
 
+  const countDecimalDigit = (v) => {
+    let valueComponents = v.toString().split(".");
+    switch (valueComponents.length) {
+      case 0: return 0;
+      case 1: return (v < 0) ? valueComponents[0].length : 0;
+      case 2: return valueComponents[1].length;
+      default: return 0;
+    }
+  }
 
-  let val = 0.1;
-  console.log(`${val}: `, getScale2([12.123, 13.0]));
+  try {
+    let scaleMaterial = makeScaleMaterial([13.5, 13.71]);
+    let scaleStart = parseInt(scaleMaterial.min / scaleMaterial.maxDigitMask, 10) * scaleMaterial.maxDigitMask;
+    let scaleEnd   = parseInt(scaleMaterial.max / scaleMaterial.maxDigitMask, 10) * scaleMaterial.maxDigitMask;
+    let numScale = Math.ceil((scaleEnd - scaleStart) / scaleMaterial.maxDigitMask) + 1;
+    let fixedParam = countDecimalDigit(scaleMaterial.maxDigitMask);
+    let scale = [...Array(numScale).keys()].map((v) => (scaleStart + v * scaleMaterial.maxDigitMask).toFixed(fixedParam));
+    console.log(scaleMaterial.maxDigitMask, fixedParam, scale);
+  } catch {
 
-
-  let xScale = d3.scaleLinear().domain([xrange[0], xrange[1]]).range([contentRect.x1, contentRect.x2]);
-  let yScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.y2, contentRect.y1]);
+  }
 }
 
 export const Sample8 = () => {
