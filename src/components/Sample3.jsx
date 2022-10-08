@@ -17,7 +17,7 @@ export const Sample3 = () => {
       .attr("width", "320")
       .attr("height", "240");
 
-    let isFirstDraw = svg.node().children.length == 0;
+    let isFirstDraw = svg.node().children.length === 0;
     if (isFirstDraw) {
       let g = selectByIdOrAdd(svg, "g", "main-wrap");
 

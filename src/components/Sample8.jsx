@@ -1,6 +1,5 @@
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
-import { makeScaleData, makeScaleMaterial } from "./scaleMaker";
 
 const redraw = (d3Container) => {
   const svg = d3.select(d3Container.current);
@@ -9,29 +8,44 @@ const redraw = (d3Container) => {
 
   let padding = 5;
   let contentRect = {x1: padding, y1: padding, x2: parentNode.clientWidth - padding, y2: parentNode.clientHeight - padding};
+
   let xScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.x1, contentRect.x2]);
   let yScale = d3.scaleLinear().domain([-1, 1]).range([contentRect.y2, contentRect.y1]);
 
-  let scaleMaterial = makeScaleMaterial([-1, 1]);
-  let majorScaleData = makeScaleData(scaleMaterial.min, scaleMaterial.max, scaleMaterial.maxDigitMask);
-  let mainorScaleData = makeScaleData(scaleMaterial.min, scaleMaterial.max, scaleMaterial.maxDigitMask/10);
-  mainorScaleData = mainorScaleData.filter(v => !majorScaleData.includes(v));
+  let points = [...Array(100).keys()].map((v) => ({x: Math.random() * 2.0 - 1.0, y: Math.random() * 2.0 - 1.0}))
 
-  let mainorScales = svg.select("#scale-bar").select("#scale-minor").selectAll("line").data(mainorScaleData);
-  mainorScales.enter().append("line").merge(mainorScales)
-    .attr("x1", d => xScale(d))
-    .attr("y1", yScale(-1))
-    .attr("x2", d => xScale(d))
-    .attr("y2", yScale(-0.9))
-    .attr("stroke", "black");
+  // 既存の<rect>を選択する。
+  let circles = svg.select("#main").selectAll("circle").data(points);
+  // 既存の<rect>と必要であれば追加で<rect>を作成する
+  circles.enter().append("circle").merge(circles)
+    .attr("cx", d => xScale(d.x))
+    .attr("cy", d => yScale(d.y))
+    .attr("x-val", d => d.x)
+    .attr("y-val", d => d.y)
+    .attr("r", d => 2.6)
+    .attr("fill", "blue")
+    .attr("stroke", "blue");
 
-  let majorScales = svg.select("#scale-bar").select("#scale-major").selectAll("line").data(majorScaleData);
-  majorScales.enter().append("line").merge(majorScales)
-    .attr("x1", d => xScale(d))
-    .attr("y1", yScale(-1))
-    .attr("x2", d => xScale(d))
-    .attr("y2", yScale(-0.8))
-    .attr("stroke", "red");
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let deltaX = 0;
+  let deltaY = 0;
+  let drag = d3.drag()
+    .on("start", ({x, y}) => {
+      dragStartX = x;
+      dragStartY = y;
+    })
+    .on("drag", ({x, y}) => {
+      let dx = deltaX + (x - dragStartX);
+      let dy = deltaY + (y - dragStartY);
+      d3.select("#main").attr('transform', `translate(${dx},${dy})`)
+    })
+    .on("end", ({x, y}) => {
+      deltaX += (x - dragStartX);
+      deltaY += (y - dragStartY);
+    });
+  svg.call(drag);
+
 }
 
 export const Sample8 = () => {
@@ -50,9 +64,7 @@ export const Sample8 = () => {
       <h3>this is Sample8</h3>
       <div style={{ width: "80%", height: "300px", background: "rgb(200, 200, 200)"}}>
         <svg ref={d3Container} height="100%" width="100%">
-          <g id="scale-bar">
-            <g id="scale-minor"/>
-            <g id="scale-major"/>
+          <g id="main">
           </g>
         </svg>
       </div>
