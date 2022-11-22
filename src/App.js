@@ -7,11 +7,12 @@ import { Sample5 } from './components/Sample5';
 import { Sample6 } from './components/Sample6';
 import { Sample7 } from './components/Sample7';
 import { Sample8 } from './components/Sample8';
+import { Sample9 } from './components/Sample9';
 
 function App() {
   return (
     <div className="App">
-      <Sample8 />
+      <Sample9 />
     </div>
   );
 }
